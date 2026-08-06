@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZERT.IO</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', system-ui, -apple-system, sans-serif; user-select: none; }
         body, html { width: 100%; height: 100%; overflow: hidden; background: #050508; color: #fff; }
@@ -181,7 +182,7 @@
                         <option value="ar">Assault Rifle (Full Auto)</option>
                         <option value="shotgun">Tactical Shotgun (Close Quarters)</option>
                         <option value="sniper">Precision Sniper (High Damage)</option>
-                        <option value="bow">Compound Bow (Rivals Projectile & Double Jump)</option>
+                        <option value="bow">Compound Bow (+1 Bounce Stack)</option>
                         <option value="lmg">Light Machine Gun (Heavy Suppression)</option>
                         <option value="burst">Burst Rifle (3-Round Burst)</option>
                     </select>
@@ -190,7 +191,7 @@
                 <div class="input-group">
                     <label for="slot2-select">Slot 2: Secondary (Daggers/Pistols)</label>
                     <select id="slot2-select">
-                        <option value="daggers">Combat Daggers (Double Jump & Dash)</option>
+                        <option value="daggers">Combat Daggers (+1 Bounce Stack)</option>
                         <option value="pistol">Tactical Pistol</option>
                         <option value="smg">Submachine Gun</option>
                         <option value="revolver">Heavy Revolver</option>
@@ -200,16 +201,16 @@
                 <div class="input-group">
                     <label for="slot3-select">Slot 3: Melee (Fists/Blades)</label>
                     <select id="slot3-select">
-                        <option value="fists">Power Fists (Double Jump Punch)</option>
+                        <option value="fists">Power Fists (+1 Bounce Stack)</option>
                         <option value="knife">Tactical Knife</option>
-                        <option value="katana">Plasma Katana</option>
+                        <option value="katana">Plasma Katana (+1 Bounce Stack)</option>
                     </select>
                 </div>
 
                 <div class="input-group">
                     <label for="slot4-select">Slot 4: Utility</label>
                     <select id="slot4-select">
-                        <option value="shockwave">Shockwave Grenade (Fortnite Bounce)</option>
+                        <option value="shockwave">Shockwave Grenade (Base Bounce)</option>
                         <option value="frag">Frag Grenade (High Explosive)</option>
                         <option value="flash">Flashbang</option>
                     </select>
@@ -221,7 +222,7 @@
                 <div class="keybind-row"><span>Backward</span><button class="keybind-btn" type="button" id="bind-backward" onclick="startBinding('backward')">KeyS</button></div>
                 <div class="keybind-row"><span>Left</span><button class="keybind-btn" type="button" id="bind-left" onclick="startBinding('left')">KeyA</button></div>
                 <div class="keybind-row"><span>Right</span><button class="keybind-btn" type="button" id="bind-right" onclick="startBinding('right')">KeyD</button></div>
-                <div class="keybind-row"><span>Jump / Double Jump</span><button class="keybind-btn" type="button" id="bind-jump" onclick="startBinding('jump')">Space</button></div>
+                <div class="keybind-row"><span>Jump / Multi-Bounce</span><button class="keybind-btn" type="button" id="bind-jump" onclick="startBinding('jump')">Space</button></div>
                 <div class="keybind-row"><span>Slot 1 (Primary)</span><button class="keybind-btn" type="button" id="bind-slot1" onclick="startBinding('slot1')">Digit1</button></div>
                 <div class="keybind-row"><span>Slot 2 (Secondary)</span><button class="keybind-btn" type="button" id="bind-slot2" onclick="startBinding('slot2')">Digit2</button></div>
                 <div class="keybind-row"><span>Slot 3 (Melee)</span><button class="keybind-btn" type="button" id="bind-slot3" onclick="startBinding('slot3')">Digit3</button></div>
@@ -376,25 +377,25 @@
         };
 
         let bindingAction = null;
-        let canDoubleJump = false;
+        let remainingBounces = 0; // Tracks stacked +1 bounces across items
 
         const ItemStats = {
-            ar: { type: 'gun', damage: 22, fireRate: 110, ammoMax: 30, reloadTime: 1200, automatic: true },
-            shotgun: { type: 'gun', damage: 16, fireRate: 550, ammoMax: 8, reloadTime: 1700, automatic: false },
-            sniper: { type: 'gun', damage: 92, fireRate: 900, ammoMax: 5, reloadTime: 2200, automatic: false },
-            bow: { type: 'gun', damage: 70, fireRate: 600, ammoMax: 1, reloadTime: 900, automatic: false, givesDoubleJump: true },
-            lmg: { type: 'gun', damage: 19, fireRate: 90, ammoMax: 60, reloadTime: 2000, automatic: true },
-            burst: { type: 'gun', damage: 28, fireRate: 300, ammoMax: 24, reloadTime: 1400, automatic: false },
-            daggers: { type: 'secondary', damage: 45, fireRate: 250, ammoMax: 10, reloadTime: 800, automatic: true, givesDoubleJump: true },
-            pistol: { type: 'secondary', damage: 18, fireRate: 200, ammoMax: 12, reloadTime: 1000, automatic: false },
-            smg: { type: 'secondary', damage: 14, fireRate: 90, ammoMax: 25, reloadTime: 1100, automatic: true },
-            revolver: { type: 'secondary', damage: 55, fireRate: 400, ammoMax: 6, reloadTime: 1500, automatic: false },
-            fists: { type: 'melee', damage: 35, fireRate: 350, givesDoubleJump: true },
-            knife: { type: 'melee', damage: 40, fireRate: 450 },
-            katana: { type: 'melee', damage: 65, fireRate: 500, givesDoubleJump: true },
-            shockwave: { type: 'util' },
-            frag: { type: 'util' },
-            flash: { type: 'util' }
+            ar: { type: 'gun', damage: 22, fireRate: 110, ammoMax: 30, reloadTime: 1200, automatic: true, bounces: 0 },
+            shotgun: { type: 'gun', damage: 16, fireRate: 550, ammoMax: 8, reloadTime: 1700, automatic: false, bounces: 0 },
+            sniper: { type: 'gun', damage: 92, fireRate: 900, ammoMax: 5, reloadTime: 2200, automatic: false, bounces: 0 },
+            bow: { type: 'gun', damage: 70, fireRate: 600, ammoMax: 1, reloadTime: 900, automatic: false, bounces: 1 },
+            lmg: { type: 'gun', damage: 19, fireRate: 90, ammoMax: 60, reloadTime: 2000, automatic: true, bounces: 0 },
+            burst: { type: 'gun', damage: 28, fireRate: 300, ammoMax: 24, reloadTime: 1400, automatic: false, bounces: 0 },
+            daggers: { type: 'secondary', damage: 45, fireRate: 250, ammoMax: 10, reloadTime: 800, automatic: true, bounces: 1 },
+            pistol: { type: 'secondary', damage: 18, fireRate: 200, ammoMax: 12, reloadTime: 1000, automatic: false, bounces: 0 },
+            smg: { type: 'secondary', damage: 14, fireRate: 90, ammoMax: 25, reloadTime: 1100, automatic: true, bounces: 0 },
+            revolver: { type: 'secondary', damage: 55, fireRate: 400, ammoMax: 6, reloadTime: 1500, automatic: false, bounces: 0 },
+            fists: { type: 'melee', damage: 35, fireRate: 350, bounces: 1 },
+            knife: { type: 'melee', damage: 40, fireRate: 450, bounces: 0 },
+            katana: { type: 'melee', damage: 65, fireRate: 500, bounces: 1 },
+            shockwave: { type: 'util', bounces: 0 },
+            frag: { type: 'util', bounces: 0 },
+            flash: { type: 'util', bounces: 0 }
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -544,7 +545,7 @@
                     .on('broadcast', { event: 'player_shoot' }, payload => handleRemoteShoot(payload.payload))
                     .subscribe((status) => {
                         if (status === 'CHANNEL_ERROR') {
-                            matchChannel = null; // Disable broadcasting if unauthorized to stop console spam
+                            matchChannel = null;
                         }
                     });
             } catch(e) {
@@ -666,11 +667,18 @@
             const itemKey = State.slots[slotKey];
             const stats = ItemStats[itemKey];
 
+            // Calculate total stacked +1 bounces from all 4 active loadout slots
+            let totalBounces = 0;
+            for (let s in State.slots) {
+                totalBounces += ItemStats[State.slots[s]]?.bounces || 0;
+            }
+            remainingBounces = totalBounces;
+
             document.querySelectorAll('.slot-box').forEach(el => el.classList.remove('active'));
             const boxEl = document.getElementById('box-' + slotKey);
             if (boxEl) boxEl.classList.add('active');
             const tacVal = document.getElementById('tactical-val');
-            if (tacVal) tacVal.innerText = itemKey.toUpperCase();
+            if (tacVal) tacVal.innerText = `${itemKey.toUpperCase()} (${totalBounces} BOUNCES)`;
 
             if (stats.type === 'gun' || stats.type === 'secondary') {
                 State.maxAmmo = stats.ammoMax;
@@ -869,21 +877,17 @@
                 case Keybinds.slot3: switchSlot('slot3'); break;
                 case Keybinds.slot4: switchSlot('slot4'); break;
                 case Keybinds.jump: 
-                    const activeItem = State.slots[State.currentSlot];
-                    const givesDoubleJump = ItemStats[activeItem]?.givesDoubleJump;
-
                     if (canJump && !State.flightMode) { 
                         velocity.y = 11.0; 
                         canJump = false; 
-                        canDoubleJump = givesDoubleJump; 
-                    } else if (canDoubleJump && !State.flightMode && givesDoubleJump) {
+                    } else if (remainingBounces > 0 && !State.flightMode) {
                         const lookDir = new THREE.Vector3();
                         camera.getWorldDirection(lookDir);
                         const camFlatDir = new THREE.Vector3(lookDir.x, 0, lookDir.z).normalize();
-                        camera.position.addScaledVector(camFlatDir, 12.0);
-                        velocity.y = 10.0; 
-                        canDoubleJump = false;
-                        showKillfeedMessage(`RIVALS MOMENTUM REDIRECT (${activeItem.toUpperCase()})!`);
+                        camera.position.addScaledVector(camFlatDir, 14.0);
+                        velocity.y = 12.0; 
+                        remainingBounces--;
+                        showKillfeedMessage(`STACKED BOUNCE REDIRECT! (${remainingBounces} BOUNCES LEFT)`);
                     }
                     break;
                 case Keybinds.reload: reloadWeapon(); break;
@@ -1117,7 +1121,13 @@
                     velocity.y = 0;
                     camera.position.y = 2.0;
                     canJump = true;
-                    canDoubleJump = false;
+                    
+                    // Recalculate stacked bounces from loadout on landing
+                    let totalBounces = 0;
+                    for (let s in State.slots) {
+                        totalBounces += ItemStats[State.slots[s]]?.bounces || 0;
+                    }
+                    remainingBounces = totalBounces;
                 }
             }
 
