@@ -533,32 +533,47 @@
         }
 
         function setupMultiplayer() {
-            matchChannel = supabaseClient.channel('zertio-secure-room', {
-                config: { broadcast: { self: false } }
-            });
+            if (!supabaseClient) return;
+            try {
+                matchChannel = supabaseClient.channel('zertio-secure-room', {
+                    config: { broadcast: { self: false } }
+                });
 
-            matchChannel
-                .on('broadcast', { event: 'player_move' }, payload => handleRemoteMove(payload.payload))
-                .on('broadcast', { event: 'player_shoot' }, payload => handleRemoteShoot(payload.payload))
-                .subscribe();
+                matchChannel
+                    .on('broadcast', { event: 'player_move' }, payload => handleRemoteMove(payload.payload))
+                    .on('broadcast', { event: 'player_shoot' }, payload => handleRemoteShoot(payload.payload))
+                    .subscribe((status) => {
+                        if (status === 'CHANNEL_ERROR') {
+                            matchChannel = null; // Disable broadcasting if unauthorized to stop console spam
+                        }
+                    });
+            } catch(e) {
+                matchChannel = null;
+            }
         }
 
         function broadcastState(position, quaternion) {
             if (!matchChannel) return;
-            matchChannel.send({
-                type: 'broadcast',
-                event: 'player_move',
-                payload: { id: playerID, name: State.name, x: position.x, y: position.y, z: position.z, qx: quaternion.x, qy: quaternion.y, qz: quaternion.qz, qw: quaternion.w, activeItem: State.slots[State.currentSlot], firing: State.isFiring }
-            });
+            try {
+                matchChannel.send({
+                    type: 'broadcast',
+                    event: 'player_move',
+                    payload: { id: playerID, name: State.name, x: position.x, y: position.y, z: position.z, qx: quaternion.x, qy: quaternion.y, qz: quaternion.qz, qw: quaternion.w, activeItem: State.slots[State.currentSlot], firing: State.isFiring }
+                });
+            } catch(e) {
+                matchChannel = null;
+            }
         }
 
         function broadcastShoot(targetID, damage) {
             if (!matchChannel) return;
-            matchChannel.send({
-                type: 'broadcast',
-                event: 'player_shoot',
-                payload: { shooter: playerID, target: targetID, damage: damage }
-            });
+            try {
+                matchChannel.send({
+                    type: 'broadcast',
+                    event: 'player_shoot',
+                    payload: { shooter: playerID, target: targetID, damage: damage }
+                });
+            } catch(e) {}
         }
 
         const authScreen = document.getElementById('auth-screen');
@@ -619,7 +634,6 @@
             });
         }
 
-        // Fixed Deployment Flow: Initializes 3D Engine FIRST, then sets slots and switches item model safely
         document.getElementById('drop-btn').onclick = function() {
             State.slots.slot1 = document.getElementById('slot1-select').value;
             State.slots.slot2 = document.getElementById('slot2-select').value;
@@ -637,9 +651,7 @@
             crosshair.className = '';
             document.getElementById('loadout-hud').className = '';
 
-            // Initialize 3D Engine first so camera and scene exist
             initEngine();
-            // Now safely set slot and build weapon model
             switchSlot('slot1');
             renderCrosshairHTML();
             spawnOfflineBots();
@@ -680,7 +692,6 @@
         let grenades = [];
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
         let velocity = new THREE.Vector3();
-        let direction = new THREE.Vector3();
         let lastShotTime = 0;
         let weaponModelGroup = null;
 
@@ -862,15 +873,15 @@
                     const givesDoubleJump = ItemStats[activeItem]?.givesDoubleJump;
 
                     if (canJump && !State.flightMode) { 
-                        velocity.y += 9.5; 
+                        velocity.y = 11.0; 
                         canJump = false; 
                         canDoubleJump = givesDoubleJump; 
                     } else if (canDoubleJump && !State.flightMode && givesDoubleJump) {
                         const lookDir = new THREE.Vector3();
                         camera.getWorldDirection(lookDir);
-                        velocity.x = lookDir.x * 20.0;
-                        velocity.z = lookDir.z * 20.0;
-                        velocity.y = 12.0; 
+                        const camFlatDir = new THREE.Vector3(lookDir.x, 0, lookDir.z).normalize();
+                        camera.position.addScaledVector(camFlatDir, 12.0);
+                        velocity.y = 10.0; 
                         canDoubleJump = false;
                         showKillfeedMessage(`RIVALS MOMENTUM REDIRECT (${activeItem.toUpperCase()})!`);
                     }
@@ -1063,7 +1074,7 @@
             requestAnimationFrame(animate);
 
             const time = performance.now();
-            const delta = (time - prevTime) / 1000;
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
             prevTime = time;
 
             bots.forEach(b => {
@@ -1082,19 +1093,24 @@
                 if (moveLeft) camera.translateX(-speed);
                 if (moveRight) camera.translateX(speed);
             } else {
-                velocity.x -= velocity.x * 12.0 * delta;
-                velocity.z -= velocity.z * 12.0 * delta;
-                velocity.y -= 30.0 * delta;
+                const moveSpeed = 14.0;
+                const camDir = new THREE.Vector3();
+                camera.getWorldDirection(camDir);
+                camDir.y = 0;
+                camDir.normalize();
 
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize();
+                const camSide = new THREE.Vector3(-camDir.z, 0, camDir.x);
 
-                if (moveForward || moveBackward) velocity.z -= direction.z * 45.0 * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * 45.0 * delta;
+                let moveVector = new THREE.Vector3();
+                if (moveForward) moveVector.add(camDir);
+                if (moveBackward) moveVector.sub(camDir);
+                if (moveRight) moveVector.add(camSide);
+                if (moveLeft) moveVector.sub(camSide);
+                moveVector.normalize();
 
-                camera.translateX(velocity.x * delta);
-                camera.translateZ(velocity.z * delta);
+                camera.position.addScaledVector(moveVector, moveSpeed * delta);
+
+                velocity.y -= 32.0 * delta;
                 camera.position.y += velocity.y * delta;
 
                 if (camera.position.y < 2.0) {
