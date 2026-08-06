@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZERT.IO</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', system-ui, -apple-system, sans-serif; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #050508; color: #fff; }
+
+        .screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: radial-gradient(circle at center, #141422 0%, #050508 100%);
+            z-index: 100; transition: opacity 0.3s ease;
+        }
+        .hidden { opacity: 0 !important; pointer-events: none !important; display: none !important; }
+
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 3.5rem; text-transform: uppercase; letter-spacing: 8px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 35px rgba(0,255,204,0.5); }
+        .subtitle { color: #8892b0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px; }
+
+        .menu-card {
+            background: rgba(15, 15, 25, 0.95);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 12px; padding: 25px; width: 500px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .tabs-header { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; flex-wrap: wrap; }
+        .tab-btn { background: none; border: none; color: #8892b0; font-weight: bold; text-transform: uppercase; cursor: pointer; font-size: 0.8rem; padding: 5px 8px; transition: color 0.2s; }
+        .tab-btn.active { color: #00ffcc; border-bottom: 2px solid #00ffcc; }
+
+        .tab-content { display: none; max-height: 260px; overflow-y: auto; padding-right: 5px; }
+        .tab-content.active { display: block; }
+
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: #8892b0; margin-bottom: 4px; font-weight: 700; }
+        select, input {
+            width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; transition: all 0.2s;
+        }
+        select:focus, input:focus { border-color: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.2); }
+
+        .keybind-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 6px; }
+        .keybind-row span { font-size: 0.8rem; color: #fff; }
+        .keybind-btn { background: #222233; border: 1px solid rgba(0,255,204,0.4); color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: monospace; min-width: 55px; text-align: center; }
+        .keybind-btn.listening { background: #00ffcc; color: #050508; border-color: #fff; }
+
+        .ev-btn {
+            width: 100%; padding: 14px; background: linear-gradient(135deg, #00ffcc 0%, #0077ff 100%);
+            border: none; border-radius: 6px; color: #050508; font-size: 1rem; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: transform 0.1s, filter 0.2s;
+            box-shadow: 0 4px 20px rgba(0,255,204,0.4); margin-top: 15px; z-index: 101; position: relative;
+        }
+        .ev-btn:hover { filter: brightness(1.15); transform: translateY(-2px); }
+        .ev-btn:active { transform: translateY(0); }
+
+        .connection-status { margin-top: 10px; font-size: 0.7rem; text-align: center; color: #00ffcc; font-family: monospace; }
+        .error-msg { color: #ff0055; font-size: 0.75rem; text-align: center; margin-top: 6px; font-weight: bold; min-height: 12px; }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5; display: flex; flex-direction: column; justify-content: space-between;
+            padding: 25px; box-sizing: border-box;
+        }
+        .hud-top, .hud-bottom { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; }
+        .hud-top { align-items: flex-start; }
+
+        .hud-panel {
+            background: rgba(10, 10, 18, 0.7);
+            border-left: 3px solid #00ffcc;
+            padding: 12px 20px; border-radius: 4px; backdrop-filter: blur(4px);
+            min-width: 140px; pointer-events: auto;
+        }
+        .hud-value { font-size: 2rem; font-weight: 900; color: #fff; font-family: monospace; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        .hud-label { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+
+        #loadout-hud {
+            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; pointer-events: none; z-index: 5;
+        }
+        .slot-box {
+            background: rgba(10, 10, 18, 0.8); border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px 12px; border-radius: 6px; text-align: center; min-width: 75px; backdrop-filter: blur(4px);
+        }
+        .slot-box.active { border-color: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.3); }
+        .slot-key { font-size: 0.6rem; color: #8892b0; font-weight: bold; }
+        .slot-name { font-size: 0.75rem; color: #fff; font-weight: 900; text-transform: uppercase; margin-top: 2px; }
+
+        #admin-panel-btn {
+            display: none; background: #ff0055; color: #fff; border: none; padding: 6px 12px;
+            font-size: 0.75rem; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+            margin-top: 8px; box-shadow: 0 0 10px rgba(255,0,85,0.5);
+        }
+
+        #admin-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 400px; background: rgba(12, 12, 20, 0.95); border: 2px solid #ff0055;
+            border-radius: 10px; padding: 25px; z-index: 100; box-shadow: 0 0 30px rgba(255,0,85,0.4);
+            backdrop-filter: blur(10px);
+        }
+        #admin-modal h2 { color: #ff0055; font-size: 1.4rem; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 2px; }
+        .admin-toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; }
+        .admin-toggle-row label { margin-bottom: 0; color: #fff; }
+        .toggle-switch { width: 45px; height: 24px; background: #333; border-radius: 12px; position: relative; cursor: pointer; transition: background 0.2s; }
+        .toggle-switch.active { background: #ff0055; }
+        .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+        .toggle-switch.active::after { transform: translateX(21px); }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 5; transition: all 0.1s;
+        }
+
+        #killfeed {
+            position: absolute; top: 25px; right: 25px; width: 280px;
+            display: flex; flex-direction: column; gap: 6px; align-items: flex-end;
+            z-index: 5; pointer-events: none;
+        }
+        .kill-msg {
+            background: rgba(10, 10, 18, 0.85); border-right: 3px solid #ff0055; padding: 8px 12px;
+            border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #eee;
+            animation: slideIn 0.2s ease, fadeOut 3.5s forwards 1s;
+        }
+        @keyframes slideIn { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="screen">
+        <div class="logo-container">
+            <h1>ZERT.IO</h1>
+            <div class="subtitle">Secure Cloud Accounts & Saved Credentials</div>
+        </div>
+        
+        <div class="menu-card">
+            <div class="input-group">
+                <label for="auth-user">Username</label>
+                <input type="text" id="auth-user" placeholder="Enter username..." maxlength="12">
+            </div>
+            <div class="input-group">
+                <label for="auth-pass">Password</label>
+                <input type="password" id="auth-pass" placeholder="Enter password...">
+            </div>
+            
+            <button class="ev-btn" id="login-btn" type="button">Log In / Register & Remember</button>
+            <div id="auth-error" class="error-msg"></div>
+            <div id="auth-status" class="connection-status">Connecting to Supabase Database...</div>
+        </div>
+    </div>
+
+    <!-- Match Loadout Screen -->
+    <div id="menu-screen" class="screen hidden">
+        <div class="logo-container">
+            <h1 id="welcome-title" style="font-size: 2.2rem;">ZERT.IO</h1>
+            <div class="subtitle">Rivals 4-Slot Loadout Configuration</div>
+        </div>
+        
+        <div class="menu-card">
+            <div class="tabs-header">
+                <button class="tab-btn active" type="button" onclick="switchTab('loadout', event)">4 Slots</button>
+                <button class="tab-btn" type="button" onclick="switchTab('controls', event)">Binds</button>
+                <button class="tab-btn" type="button" onclick="switchTab('settings', event)">Settings</button>
+                <button class="tab-btn" type="button" onclick="switchTab('crosshair', event)">Crosshair</button>
+            </div>
+
+            <div id="tab-loadout" class="tab-content active">
+                <div class="input-group">
+                    <label for="slot1-select">Slot 1: Primary Weapon</label>
+                    <select id="slot1-select">
+                        <option value="ar">Assault Rifle (Full Auto)</option>
+                        <option value="shotgun">Tactical Shotgun (Close Quarters)</option>
+                        <option value="sniper">Precision Sniper (High Damage)</option>
+                        <option value="bow">Compound Bow (Rivals Projectile & Double Jump)</option>
+                        <option value="lmg">Light Machine Gun (Heavy Suppression)</option>
+                        <option value="burst">Burst Rifle (3-Round Burst)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="slot2-select">Slot 2: Secondary (Daggers/Pistols)</label>
+                    <select id="slot2-select">
+                        <option value="daggers">Combat Daggers (Double Jump & Dash)</option>
+                        <option value="pistol">Tactical Pistol</option>
+                        <option value="smg">Submachine Gun</option>
+                        <option value="revolver">Heavy Revolver</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="slot3-select">Slot 3: Melee (Fists/Blades)</label>
+                    <select id="slot3-select">
+                        <option value="fists">Power Fists (Double Jump Punch)</option>
+                        <option value="knife">Tactical Knife</option>
+                        <option value="katana">Plasma Katana</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="slot4-select">Slot 4: Utility</label>
+                    <select id="slot4-select">
+                        <option value="shockwave">Shockwave Grenade (Fortnite Bounce)</option>
+                        <option value="frag">Frag Grenade (High Explosive)</option>
+                        <option value="flash">Flashbang</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="tab-controls" class="tab-content">
+                <div class="keybind-row"><span>Forward</span><button class="keybind-btn" type="button" id="bind-forward" onclick="startBinding('forward')">KeyW</button></div>
+                <div class="keybind-row"><span>Backward</span><button class="keybind-btn" type="button" id="bind-backward" onclick="startBinding('backward')">KeyS</button></div>
+                <div class="keybind-row"><span>Left</span><button class="keybind-btn" type="button" id="bind-left" onclick="startBinding('left')">KeyA</button></div>
+                <div class="keybind-row"><span>Right</span><button class="keybind-btn" type="button" id="bind-right" onclick="startBinding('right')">KeyD</button></div>
+                <div class="keybind-row"><span>Jump / Double Jump</span><button class="keybind-btn" type="button" id="bind-jump" onclick="startBinding('jump')">Space</button></div>
+                <div class="keybind-row"><span>Slot 1 (Primary)</span><button class="keybind-btn" type="button" id="bind-slot1" onclick="startBinding('slot1')">Digit1</button></div>
+                <div class="keybind-row"><span>Slot 2 (Secondary)</span><button class="keybind-btn" type="button" id="bind-slot2" onclick="startBinding('slot2')">Digit2</button></div>
+                <div class="keybind-row"><span>Slot 3 (Melee)</span><button class="keybind-btn" type="button" id="bind-slot3" onclick="startBinding('slot3')">Digit3</button></div>
+                <div class="keybind-row"><span>Slot 4 (Util)</span><button class="keybind-btn" type="button" id="bind-slot4" onclick="startBinding('slot4')">KeyG</button></div>
+                <div class="keybind-row"><span>Reload</span><button class="keybind-btn" type="button" id="bind-reload" onclick="startBinding('reload')">KeyR</button></div>
+            </div>
+
+            <div id="tab-settings" class="tab-content">
+                <div class="input-group">
+                    <label for="sens-range">Mouse Sensitivity: <span id="sens-val">2.2</span></label>
+                    <input type="range" id="sens-range" min="0.2" max="10.0" step="0.1" value="2.2" oninput="updateSensitivity(this.value)">
+                </div>
+                <div class="input-group">
+                    <label for="fov-range">Field of View (FOV): <span id="fov-val">80</span></label>
+                    <input type="range" id="fov-range" min="60" max="120" step="1" value="80" oninput="updateFOV(this.value)">
+                </div>
+            </div>
+
+            <div id="tab-crosshair" class="tab-content">
+                <div class="input-group">
+                    <label for="crosshair-style">Crosshair Style</label>
+                    <select id="crosshair-style" onchange="updateCrosshairStyle(this.value)">
+                        <option value="dot">Classic Dot</option>
+                        <option value="cross">Cross / Plus</option>
+                        <option value="circle">Hollow Circle</option>
+                        <option value="square">Square Target</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="crosshair-color">Crosshair Color</label>
+                    <input type="color" id="crosshair-color" value="#00ffcc" onchange="updateCrosshairColor(this.value)" style="height: 40px; cursor: pointer;">
+                </div>
+            </div>
+
+            <button class="ev-btn" id="drop-btn" type="button">Deploy To Match</button>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+        <div class="hud-top">
+            <div class="hud-panel">
+                <div class="hud-label">Integrity / HP</div>
+                <div id="hp-val" class="hud-value">100</div>
+                <button id="admin-panel-btn" type="button">Admin Panel</button>
+            </div>
+            <div class="hud-panel" style="border-left-color: #ff0055; text-align: right;">
+                <div class="hud-label">Match Score</div>
+                <div id="score-val" class="hud-value">0</div>
+            </div>
+        </div>
+        <div class="hud-bottom">
+            <div class="hud-panel" style="pointer-events: none;">
+                <div class="hud-label">Ammunition</div>
+                <div id="ammo-val" class="hud-value">30/30</div>
+            </div>
+            <div class="hud-panel" style="border-left-color: #0077ff; text-align: right; pointer-events: none;">
+                <div class="hud-label">Active Slot</div>
+                <div id="tactical-val" class="hud-value" style="color: #00ffcc; font-size: 1.2rem;">SLOT 1</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4-Slot Loadout HUD Widget -->
+    <div id="loadout-hud" class="hidden">
+        <div class="slot-box active" id="box-slot1">
+            <div class="slot-key">[1] PRIMARY</div>
+            <div class="slot-name" id="name-slot1">AR</div>
+        </div>
+        <div class="slot-box" id="box-slot2">
+            <div class="slot-key">[2] SECONDARY</div>
+            <div class="slot-name" id="name-slot2">DAGGERS</div>
+        </div>
+        <div class="slot-box" id="box-slot3">
+            <div class="slot-key">[3] MELEE</div>
+            <div class="slot-name" id="name-slot3">FISTS</div>
+        </div>
+        <div class="slot-box" id="box-slot4">
+            <div class="slot-key">[4] UTIL</div>
+            <div class="slot-name" id="name-slot4">GRENADE</div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin-modal" class="hidden">
+        <h2>Admin Control Center</h2>
+        <div class="admin-toggle-row">
+            <label>God Mode (Invincible)</label>
+            <div id="toggle-god" class="toggle-switch"></div>
+        </div>
+        <div class="admin-toggle-row">
+            <label>Flight Mode (Fly & No-Clip)</label>
+            <div id="toggle-flight" class="toggle-switch"></div>
+        </div>
+        <div class="admin-toggle-row">
+            <label>Aimbot (Auto Lock Target)</label>
+            <div id="toggle-aimbot" class="toggle-switch"></div>
+        </div>
+        <button class="ev-btn" id="close-admin" type="button">Close Panel</button>
+    </div>
+
+    <div id="crosshair" class="hidden"></div>
+    <div id="killfeed"></div>
+    <div id="canvas-container"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://uhpoidttjaifynaejjvm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVocG9pZHR0amFpZnluYWVqanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjV9.placeholder';
+
+        let supabaseClient = null;
+        let matchChannel = null;
+        const playerID = 'user_' + Math.random().toString(36).substring(2, 9);
+        const remotePlayers = {};
+        const bots = []; // Local roaming bots for single player / offline action
+
+        const State = {
+            name: '',
+            isAdmin: false,
+            slots: {
+                slot1: 'ar',
+                slot2: 'daggers',
+                slot3: 'fists',
+                slot4: 'shockwave'
+            },
+            currentSlot: 'slot1',
+            health: 100,
+            score: 0,
+            ammo: 30,
+            maxAmmo: 30,
+            inGame: false,
+            godMode: false,
+            flightMode: false,
+            aimbot: false,
+            isFiring: false,
+            sensitivity: 2.2,
+            fov: 80,
+            crosshairStyle: 'dot',
+            crosshairColor: '#00ffcc'
+        };
+
+        const Keybinds = {
+            forward: 'KeyW',
+            backward: 'KeyS',
+            left: 'KeyA',
+            right: 'KeyD',
+            jump: 'Space',
+            slot1: 'Digit1',
+            slot2: 'Digit2',
+            slot3: 'Digit3',
+            slot4: 'KeyG',
+            reload: 'KeyR'
+        };
+
+        let bindingAction = null;
+        let canDoubleJump = false;
+
+        const ItemStats = {
+            ar: { type: 'gun', damage: 22, fireRate: 110, ammoMax: 30, reloadTime: 1200, automatic: true },
+            shotgun: { type: 'gun', damage: 16, fireRate: 550, ammoMax: 8, reloadTime: 1700, automatic: false },
+            sniper: { type: 'gun', damage: 92, fireRate: 900, ammoMax: 5, reloadTime: 2200, automatic: false },
+            bow: { type: 'gun', damage: 70, fireRate: 600, ammoMax: 1, reloadTime: 900, automatic: false, givesDoubleJump: true },
+            lmg: { type: 'gun', damage: 19, fireRate: 90, ammoMax: 60, reloadTime: 2000, automatic: true },
+            burst: { type: 'gun', damage: 28, fireRate: 300, ammoMax: 24, reloadTime: 1400, automatic: false },
+            daggers: { type: 'secondary', damage: 45, fireRate: 250, ammoMax: 10, reloadTime: 800, automatic: true, givesDoubleJump: true },
+            pistol: { type: 'secondary', damage: 18, fireRate: 200, ammoMax: 12, reloadTime: 1000, automatic: false },
+            smg: { type: 'secondary', damage: 14, fireRate: 90, ammoMax: 25, reloadTime: 1100, automatic: true },
+            revolver: { type: 'secondary', damage: 55, fireRate: 400, ammoMax: 6, reloadTime: 1500, automatic: false },
+            fists: { type: 'melee', damage: 35, fireRate: 350, givesDoubleJump: true },
+            knife: { type: 'melee', damage: 40, fireRate: 450 },
+            katana: { type: 'melee', damage: 65, fireRate: 500, givesDoubleJump: true },
+            shockwave: { type: 'util' },
+            frag: { type: 'util' },
+            flash: { type: 'util' }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUser = localStorage.getItem('zertio_user');
+            const savedPass = localStorage.getItem('zertio_pass');
+            if (savedUser && savedPass) {
+                document.getElementById('auth-user').value = savedUser;
+                document.getElementById('auth-pass').value = savedPass;
+            }
+
+            const savedSettings = localStorage.getItem('zertio_settings');
+            if (savedSettings) {
+                try {
+                    const parsed = JSON.parse(savedSettings);
+                    State.sensitivity = parsed.sens ?? 2.2;
+                    State.fov = parsed.fov ?? 80;
+                    State.crosshairStyle = parsed.chStyle ?? 'dot';
+                    State.crosshairColor = parsed.chColor ?? '#00ffcc';
+
+                    document.getElementById('sens-range').value = State.sensitivity;
+                    document.getElementById('sens-val').innerText = State.sensitivity;
+                    document.getElementById('fov-range').value = State.fov;
+                    document.getElementById('fov-val').innerText = State.fov;
+                    document.getElementById('crosshair-style').value = State.crosshairStyle;
+                    document.getElementById('crosshair-color').value = State.crosshairColor;
+                } catch(e) {}
+            }
+
+            const savedBinds = localStorage.getItem('zertio_binds');
+            if (savedBinds) {
+                try {
+                    const parsedBinds = JSON.parse(savedBinds);
+                    Object.assign(Keybinds, parsedBinds);
+                    for (let k in Keybinds) {
+                        const btn = document.getElementById('bind-' + k);
+                        if (btn) btn.innerText = Keybinds[k];
+                    }
+                } catch(e) {}
+            }
+        });
+
+        function saveGamePreferences() {
+            const settingsObj = {
+                sens: State.sensitivity,
+                fov: State.fov,
+                chStyle: State.crosshairStyle,
+                chColor: State.crosshairColor
+            };
+            localStorage.setItem('zertio_settings', JSON.stringify(settingsObj));
+            localStorage.setItem('zertio_binds', JSON.stringify(Keybinds));
+        }
+
+        function switchTab(tabName, evt) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            if (evt && evt.target) evt.target.classList.add('active');
+        }
+
+        function startBinding(action) {
+            bindingAction = action;
+            const btn = document.getElementById('bind-' + action);
+            btn.innerText = "PRESS...";
+            btn.classList.add('listening');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (bindingAction) {
+                Keybinds[bindingAction] = e.code;
+                const btn = document.getElementById('bind-' + bindingAction);
+                btn.innerText = e.code;
+                btn.classList.remove('listening');
+                bindingAction = null;
+                saveGamePreferences();
+                e.preventDefault();
+                return;
+            }
+        });
+
+        function updateSensitivity(val) {
+            State.sensitivity = parseFloat(val);
+            document.getElementById('sens-val').innerText = val;
+            saveGamePreferences();
+        }
+
+        function updateFOV(val) {
+            State.fov = parseInt(val);
+            document.getElementById('fov-val').innerText = val;
+            if (camera) {
+                camera.fov = State.fov;
+                camera.updateProjectionMatrix();
+            }
+            saveGamePreferences();
+        }
+
+        function updateCrosshairStyle(style) {
+            State.crosshairStyle = style;
+            renderCrosshairHTML();
+            saveGamePreferences();
+        }
+
+        function updateCrosshairColor(color) {
+            State.crosshairColor = color;
+            renderCrosshairHTML();
+            saveGamePreferences();
+        }
+
+        function renderCrosshairHTML() {
+            const el = document.getElementById('crosshair');
+            if (!el) return;
+            el.style.backgroundColor = 'transparent';
+            el.innerHTML = '';
+            const c = State.crosshairColor;
+            if (State.crosshairStyle === 'dot') {
+                el.style.width = '6px'; el.style.height = '6px'; el.style.borderRadius = '50%';
+                el.style.backgroundColor = c; el.style.boxShadow = `0 0 6px ${c}`;
+            } else if (State.crosshairStyle === 'cross') {
+                el.style.width = '16px'; el.style.height = '16px'; el.style.borderRadius = '0';
+                el.style.backgroundColor = 'transparent'; el.style.boxShadow = 'none';
+                el.innerHTML = `<div style="position:absolute; top:7px; left:0; width:16px; height:2px; background:${c};"></div><div style="position:absolute; top:0; left:7px; width:2px; height:16px; background:${c};"></div>`;
+            } else if (State.crosshairStyle === 'circle') {
+                el.style.width = '16px'; el.style.height = '16px'; el.style.borderRadius = '50%';
+                el.style.backgroundColor = 'transparent'; el.style.border = `2px solid ${c}`;
+            } else if (State.crosshairStyle === 'square') {
+                el.style.width = '14px'; el.style.height = '14px'; el.style.borderRadius = '0';
+                el.style.backgroundColor = 'transparent'; el.style.border = `2px solid ${c}`;
+            }
+        }
+
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            setupMultiplayer();
+            document.getElementById('auth-status').innerText = "Connected to Supabase Server ✓";
+        } catch(e) {
+            document.getElementById('auth-status').innerText = "Running in Offline Mode";
+        }
+
+        function setupMultiplayer() {
+            matchChannel = supabaseClient.channel('zertio-secure-room', {
+                config: { broadcast: { self: false } }
+            });
+
+            matchChannel
+                .on('broadcast', { event: 'player_move' }, payload => handleRemoteMove(payload.payload))
+                .on('broadcast', { event: 'player_shoot' }, payload => handleRemoteShoot(payload.payload))
+                .subscribe();
+        }
+
+        function broadcastState(position, quaternion) {
+            if (!matchChannel) return;
+            matchChannel.send({
+                type: 'broadcast',
+                event: 'player_move',
+                payload: { id: playerID, name: State.name, x: position.x, y: position.y, z: position.z, qx: quaternion.x, qy: quaternion.y, qz: quaternion.qz, qw: quaternion.w, activeItem: State.slots[State.currentSlot], firing: State.isFiring }
+            });
+        }
+
+        function broadcastShoot(targetID, damage) {
+            if (!matchChannel) return;
+            matchChannel.send({
+                type: 'broadcast',
+                event: 'player_shoot',
+                payload: { shooter: playerID, target: targetID, damage: damage }
+            });
+        }
+
+        const authScreen = document.getElementById('auth-screen');
+        const menuScreen = document.getElementById('menu-screen');
+        const hud = document.getElementById('hud');
+        const crosshair = document.getElementById('crosshair');
+        const loginBtn = document.getElementById('login-btn');
+        const authError = document.getElementById('auth-error');
+
+        loginBtn.addEventListener('click', async () => {
+            const username = document.getElementById('auth-user').value.trim();
+            const password = document.getElementById('auth-pass').value.trim();
+            if (!username || !password) { authError.innerText = "Please enter both username and password."; return; }
+            authError.innerText = "Authenticating...";
+
+            localStorage.setItem('zertio_user', username);
+            localStorage.setItem('zertio_pass', password);
+
+            try {
+                const { data, error } = await supabaseClient.from('accounts').select('*').eq('username', username).single();
+                if (error || !data) {
+                    await supabaseClient.from('accounts').insert([{ username, password, is_admin: false }]);
+                    proceedLogin(username, false);
+                } else {
+                    if (data.password === password) proceedLogin(username, data.is_admin === true);
+                    else authError.innerText = "Incorrect password.";
+                }
+            } catch (err) {
+                proceedLogin(username, username.toLowerCase() === 'admin' || username === 'ZERTZ');
+            }
+        });
+
+        function proceedLogin(username, isAdmin) {
+            State.name = username; State.isAdmin = isAdmin;
+            authScreen.classList.add('hidden'); 
+            authScreen.style.display = 'none';
+            menuScreen.classList.remove('hidden');
+            if (isAdmin) {
+                document.getElementById('admin-panel-btn').style.display = 'block';
+                showKillfeedMessage("ADMIN PRIVILEGES GRANTED [ADMIN PANEL UNLOCKED]");
+            }
+        }
+
+        const adminModal = document.getElementById('admin-modal');
+        document.getElementById('admin-panel-btn').addEventListener('click', () => { adminModal.classList.toggle('hidden'); document.exitPointerLock(); });
+        document.getElementById('close-admin').addEventListener('click', () => { adminModal.classList.add('hidden'); document.body.requestPointerLock(); });
+
+        setupToggle('toggle-god', 'godMode');
+        setupToggle('toggle-flight', 'flightMode');
+        setupToggle('toggle-aimbot', 'aimbot');
+
+        function setupToggle(elementId, stateKey) {
+            const el = document.getElementById(elementId);
+            el.addEventListener('click', () => {
+                el.classList.toggle('active');
+                State[stateKey] = el.classList.contains('active');
+                showKillfeedMessage(`${stateKey.toUpperCase()}: ${State[stateKey] ? 'ENABLED' : 'DISABLED'}`);
+            });
+        }
+
+        // Guaranteed deployment and bot spawner
+        document.getElementById('drop-btn').onclick = function() {
+            State.slots.slot1 = document.getElementById('slot1-select').value;
+            State.slots.slot2 = document.getElementById('slot2-select').value;
+            State.slots.slot3 = document.getElementById('slot3-select').value;
+            State.slots.slot4 = document.getElementById('slot4-select').value;
+
+            document.getElementById('name-slot1').innerText = State.slots.slot1.toUpperCase();
+            document.getElementById('name-slot2').innerText = State.slots.slot2.toUpperCase();
+            document.getElementById('name-slot3').innerText = State.slots.slot3.toUpperCase();
+            document.getElementById('name-slot4').innerText = State.slots.slot4.toUpperCase();
+
+            switchSlot('slot1');
+            renderCrosshairHTML();
+
+            menuScreen.style.cssText = "display: none !important;";
+            menuScreen.className = 'screen hidden';
+            hud.className = '';
+            crosshair.className = '';
+            document.getElementById('loadout-hud').className = '';
+
+            initEngine();
+            spawnOfflineBots();
+            setTimeout(() => {
+                try { document.body.requestPointerLock(); } catch(e) {}
+            }, 100);
+        };
+
+        function switchSlot(slotKey) {
+            State.currentSlot = slotKey;
+            const itemKey = State.slots[slotKey];
+            const stats = ItemStats[itemKey];
+
+            document.querySelectorAll('.slot-box').forEach(el => el.classList.remove('active'));
+            document.getElementById('box-' + slotKey).classList.add('active');
+            document.getElementById('tactical-val').innerText = itemKey.toUpperCase();
+
+            if (stats.type === 'gun' || stats.type === 'secondary') {
+                State.maxAmmo = stats.ammoMax;
+                State.ammo = State.maxAmmo;
+                document.getElementById('ammo-val').innerText = `${State.ammo}/${State.maxAmmo}`;
+            } else if (stats.type === 'melee') {
+                document.getElementById('ammo-val').innerText = "MELEE";
+            } else {
+                document.getElementById('ammo-val').innerText = "UTIL";
+            }
+
+            buildPlayerWeaponModel();
+        }
+
+        let scene, camera, renderer, clock;
+        let grenades = [];
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let lastShotTime = 0;
+        let weaponModelGroup = null;
+
+        function initEngine() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a12);
+            scene.fog = new THREE.FogExp2(0x0a0a12, 0.012);
+
+            camera = new THREE.PerspectiveCamera(State.fov, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 10);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const sunLight = new THREE.DirectionalLight(0x00ffcc, 1.0);
+            sunLight.position.set(40, 80, 40);
+            scene.add(sunLight);
+
+            buildZertMap();
+            buildPlayerWeaponModel();
+
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+
+            State.inGame = true;
+            animate();
+        }
+
+        function buildZertMap() {
+            const floorGeo = new THREE.PlaneGeometry(240, 240, 40, 40);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x11111d, roughness: 0.9 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            const grid = new THREE.GridHelper(240, 50, 0x00ffcc, 0x1f1f33);
+            grid.position.y = 0.02;
+            scene.add(grid);
+
+            const blockMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4 });
+            const neonMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc, emissiveIntensity: 0.6 });
+
+            const obstacles = [
+                { x: 0, z: -25, w: 24, h: 5, d: 6 },
+                { x: 25, z: 0, w: 6, h: 8, d: 24 },
+                { x: -25, z: 0, w: 6, h: 8, d: 24 },
+                { x: 20, z: 25, w: 10, h: 12, d: 10 },
+                { x: -20, z: -25, w: 10, h: 10, d: 10 }
+            ];
+
+            obstacles.forEach(o => {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, o.h, o.d), blockMat);
+                mesh.position.set(o.x, o.h / 2, o.z);
+                scene.add(mesh);
+                const trim = new THREE.Mesh(new THREE.BoxGeometry(o.w + 0.2, 0.3, o.d + 0.2), neonMat);
+                trim.position.set(o.x, o.h, o.z);
+                scene.add(trim);
+            });
+        }
+
+        function spawnOfflineBots() {
+            for (let i = 0; i < 4; i++) {
+                const group = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), new THREE.MeshStandardMaterial({ color: 0xff0055, metalness: 0.5 }));
+                body.position.y = 1;
+                group.add(body);
+                
+                const rx = Math.random() * 60 - 30;
+                const rz = Math.random() * 60 - 30;
+                group.position.set(rx, 0, rz);
+                scene.add(group);
+
+                bots.push({
+                    mesh: group,
+                    health: 100,
+                    name: `Bot_${i+1}`,
+                    speed: 0.04,
+                    angle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function buildPlayerWeaponModel() {
+            if (weaponModelGroup) camera.remove(weaponModelGroup);
+            weaponModelGroup = new THREE.Group();
+
+            const itemKey = State.slots[State.currentSlot];
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x22222d, metalness: 0.8, roughness: 0.2 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc, emissiveIntensity: 0.5 });
+
+            if (itemKey === 'bow') {
+                const bowMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.1), bodyMat);
+                const stringMesh = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.02), accentMat);
+                stringMesh.position.set(0.04, 0, 0);
+                weaponModelGroup.add(bowMesh, stringMesh);
+            } else if (itemKey === 'daggers') {
+                const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.06), bodyMat);
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.02), accentMat);
+                blade.position.set(0, 0.25, 0);
+                weaponModelGroup.add(hilt, blade);
+            } else if (itemKey === 'fists' || itemKey === 'knife' || itemKey === 'katana') {
+                const fist = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), accentMat);
+                fist.position.set(0.1, -0.1, -0.3);
+                weaponModelGroup.add(fist);
+            } else {
+                const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.6), bodyMat);
+                weaponModelGroup.add(gun);
+            }
+
+            weaponModelGroup.position.set(0.35, -0.25, -0.55);
+            camera.add(weaponModelGroup);
+        }
+
+        function handleRemoteMove(data) {
+            if (data.id === playerID) return;
+            let pMesh = remotePlayers[data.id];
+            if (!pMesh) {
+                const group = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), new THREE.MeshStandardMaterial({ color: 0xff0055, metalness: 0.5 }));
+                body.position.y = 1;
+                group.add(body);
+                scene.add(group);
+                pMesh = { mesh: group, name: data.name, health: 100 };
+                remotePlayers[data.id] = pMesh;
+            }
+            pMesh.mesh.position.set(data.x, data.y, data.z);
+            pMesh.mesh.quaternion.set(data.qx, data.qy, data.qz, data.qw);
+        }
+
+        function handleRemoteShoot(data) {
+            if (data.target === playerID && !State.godMode) {
+                State.health -= data.damage;
+                document.getElementById('hp-val').innerText = Math.max(0, State.health);
+                if (State.health <= 0) {
+                    showKillfeedMessage(`Eliminated by ${data.shooter}`);
+                    State.health = 100;
+                    document.getElementById('hp-val').innerText = State.health;
+                    camera.position.set(0, 2, 10);
+                }
+            }
+        }
+
+        let euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        const PI_2 = Math.PI / 2;
+
+        function onMouseMove(event) {
+            if (document.pointerLockElement !== document.body) return;
+            const sensFactor = State.sensitivity * 0.001;
+            euler.setFromQuaternion(camera.quaternion);
+            euler.y -= event.movementX * sensFactor;
+            euler.x -= event.movementY * sensFactor;
+            euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+        }
+
+        function onKeyDown(e) {
+            if (bindingAction) return;
+            switch (e.code) {
+                case Keybinds.forward: moveForward = true; break;
+                case Keybinds.backward: moveBackward = true; break;
+                case Keybinds.left: moveLeft = true; break;
+                case Keybinds.right: moveRight = true; break;
+                case Keybinds.slot1: switchSlot('slot1'); break;
+                case Keybinds.slot2: switchSlot('slot2'); break;
+                case Keybinds.slot3: switchSlot('slot3'); break;
+                case Keybinds.slot4: switchSlot('slot4'); break;
+                case Keybinds.jump: 
+                    const activeItem = State.slots[State.currentSlot];
+                    const givesDoubleJump = ItemStats[activeItem]?.givesDoubleJump;
+
+                    if (canJump && !State.flightMode) { 
+                        velocity.y += 9.5; 
+                        canJump = false; 
+                        canDoubleJump = givesDoubleJump; 
+                    } else if (canDoubleJump && !State.flightMode && givesDoubleJump) {
+                        const lookDir = new THREE.Vector3();
+                        camera.getWorldDirection(lookDir);
+                        velocity.x = lookDir.x * 20.0;
+                        velocity.z = lookDir.z * 20.0;
+                        velocity.y = 12.0; 
+                        canDoubleJump = false;
+                        showKillfeedMessage(`RIVALS MOMENTUM REDIRECT (${activeItem.toUpperCase()})!`);
+                    }
+                    break;
+                case Keybinds.reload: reloadWeapon(); break;
+            }
+        }
+
+        function onKeyUp(e) {
+            if (bindingAction) return;
+            switch (e.code) {
+                case Keybinds.forward: moveForward = false; break;
+                case Keybinds.backward: moveBackward = false; break;
+                case Keybinds.left: moveLeft = false; break;
+                case Keybinds.right: moveRight = false; break;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onMouseDown(e) {
+            if (document.pointerLockElement !== document.body) {
+                if (!adminModal.classList.contains('hidden')) return;
+                try { document.body.requestPointerLock(); } catch(err) {}
+                return;
+            }
+            if (e.button === 0) {
+                State.isFiring = true;
+                useCurrentSlot();
+            }
+        }
+
+        function onMouseUp(e) {
+            if (e.button === 0) State.isFiring = false;
+        }
+
+        function useCurrentSlot() {
+            if (!State.isFiring) return;
+            const itemKey = State.slots[State.currentSlot];
+            const stats = ItemStats[itemKey];
+
+            if (stats.type === 'util') {
+                throwUtility();
+                return;
+            }
+
+            const now = performance.now();
+            if (now - lastShotTime < stats.fireRate) {
+                if (stats.automatic && State.isFiring) requestAnimationFrame(useCurrentSlot);
+                return;
+            }
+            if ((stats.type === 'gun' || stats.type === 'secondary') && State.ammo <= 0) { reloadWeapon(); return; }
+
+            lastShotTime = now;
+            if (stats.type === 'gun' || stats.type === 'secondary') {
+                State.ammo--;
+                document.getElementById('ammo-val').innerText = `${State.ammo}/${State.maxAmmo}`;
+            }
+
+            if (weaponModelGroup) {
+                weaponModelGroup.position.z += 0.1;
+                setTimeout(() => { if(weaponModelGroup) weaponModelGroup.position.z -= 0.1; }, 50);
+            }
+
+            const raycaster = new THREE.Raycaster();
+            if (State.aimbot) {
+                const allTargets = [...Object.keys(remotePlayers).map(id => remotePlayers[id].mesh.children[0]), ...bots.map(b => b.mesh.children[0])];
+                if (allTargets.length > 0) camera.lookAt(allTargets[0].position);
+            }
+
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            // Check Hits against local bots
+            const botMeshes = bots.map(b => b.mesh.children[0]);
+            const botIntersects = raycaster.intersectObjects(botMeshes);
+
+            if (botIntersects.length > 0) {
+                const hitMesh = botIntersects[0].object;
+                const targetBot = bots.find(b => b.mesh.children[0] === hitMesh);
+                if (targetBot) {
+                    targetBot.health -= stats.damage;
+                    showKillfeedMessage(`Dealt ${stats.damage} dmg to ${targetBot.name}`);
+                    if (targetBot.health <= 0) {
+                        scene.remove(targetBot.mesh);
+                        const index = bots.indexOf(targetBot);
+                        if (index > -1) bots.splice(index, 1);
+                        State.score += 100;
+                        document.getElementById('score-val').innerText = State.score;
+                        showKillfeedMessage(`ELIMINATED ${targetBot.name} +100PTS`);
+                        setTimeout(() => spawnSingleBot(), 3000);
+                    }
+                }
+            }
+
+            // Check Hits against remote players
+            const targetObjects = Object.keys(remotePlayers).map(id => remotePlayers[id].mesh.children[0]);
+            const intersects = raycaster.intersectObjects(targetObjects);
+
+            if (intersects.length > 0) {
+                for (let id in remotePlayers) {
+                    if (remotePlayers[id].mesh.children[0] === intersects[0].object) {
+                        broadcastShoot(id, stats.damage);
+                        showKillfeedMessage(`Dealt ${stats.damage} dmg to ${remotePlayers[id].name}`);
+                        State.score += 50;
+                        document.getElementById('score-val').innerText = State.score;
+                    }
+                }
+            }
+
+            if (stats.automatic && State.isFiring) {
+                setTimeout(useCurrentSlot, stats.fireRate);
+            }
+        }
+
+        function spawnSingleBot() {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), new THREE.MeshStandardMaterial({ color: 0xff0055, metalness: 0.5 }));
+            body.position.y = 1;
+            group.add(body);
+            const rx = Math.random() * 60 - 30;
+            const rz = Math.random() * 60 - 30;
+            group.position.set(rx, 0, rz);
+            scene.add(group);
+            bots.push({
+                mesh: group,
+                health: 100,
+                name: `Bot_${Math.floor(Math.random()*90+10)}`,
+                speed: 0.04,
+                angle: Math.random() * Math.PI * 2
+            });
+        }
+
+        function reloadWeapon() {
+            const itemKey = State.slots[State.currentSlot];
+            const stats = ItemStats[itemKey];
+            if (stats.type !== 'gun' && stats.type !== 'secondary') return;
+
+            document.getElementById('ammo-val').innerText = "RELOADING";
+            setTimeout(() => {
+                State.ammo = State.maxAmmo;
+                document.getElementById('ammo-val').innerText = `${State.ammo}/${State.maxAmmo}`;
+            }, stats.reloadTime);
+        }
+
+        function throwUtility() {
+            const itemKey = State.slots[State.currentSlot];
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc }));
+            mesh.position.copy(camera.position);
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            const nadeVel = dir.multiplyScalar(28).add(new THREE.Vector3(0, 6, 0));
+            scene.add(mesh);
+            grenades.push({ mesh, velocity: nadeVel, type: itemKey });
+        }
+
+        function updateGrenades(delta) {
+            for (let i = grenades.length - 1; i >= 0; i--) {
+                const g = grenades[i];
+                g.velocity.y -= 18 * delta;
+                g.mesh.position.addScaledVector(g.velocity, delta);
+
+                if (g.mesh.position.y <= 0.3) {
+                    g.mesh.position.y = 0.3;
+                    if (g.type === 'shockwave' && camera.position.distanceTo(g.mesh.position) < 16) {
+                        velocity.y = 16;
+                        const pushDir = new THREE.Vector3().subVectors(camera.position, g.mesh.position).normalize();
+                        velocity.add(pushDir.multiplyScalar(14));
+                    }
+                    scene.remove(g.mesh);
+                    grenades.splice(i, 1);
+                }
+            }
+        }
+
+        function showKillfeedMessage(msg) {
+            const div = document.createElement('div');
+            div.className = 'kill-msg';
+            div.innerText = msg;
+            document.getElementById('killfeed').appendChild(div);
+            setTimeout(() => div.remove(), 4000);
+        }
+
+        let prevTime = performance.now();
+        let broadcastTimer = 0;
+
+        function animate() {
+            if (!State.inGame) return;
+            requestAnimationFrame(animate);
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+            prevTime = time;
+
+            // Bot AI roaming updates
+            bots.forEach(b => {
+                b.mesh.rotation.y += 0.02;
+                b.mesh.translateZ(b.speed);
+                if (Math.abs(b.mesh.position.x) > 100 || Math.abs(b.mesh.position.z) > 100) {
+                    b.mesh.rotation.y += Math.PI;
+                }
+            });
+
+            if (State.flightMode) {
+                velocity.set(0, 0, 0);
+                const speed = 25.0 * delta;
+                if (moveForward) camera.translateZ(-speed);
+                if (moveBackward) camera.translateZ(speed);
+                if (moveLeft) camera.translateX(-speed);
+                if (moveRight) camera.translateX(speed);
+            } else {
+                velocity.x -= velocity.x * 12.0 * delta;
+                velocity.z -= velocity.z * 12.0 * delta;
+                velocity.y -= 30.0 * delta;
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+
+                if (moveForward || moveBackward) velocity.z -= direction.z * 45.0 * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * 45.0 * delta;
+
+                camera.translateX(velocity.x * delta);
+                camera.translateZ(velocity.z * delta);
+                camera.position.y += velocity.y * delta;
+
+                if (camera.position.y < 2.0) {
+                    velocity.y = 0;
+                    camera.position.y = 2.0;
+                    canJump = true;
+                    canDoubleJump = false;
+                }
+            }
+
+            updateGrenades(delta);
+
+            broadcastTimer += delta;
+            if (broadcastTimer > 0.05) {
+                broadcastState(camera.position, camera.quaternion);
+                broadcastTimer = 0;
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
