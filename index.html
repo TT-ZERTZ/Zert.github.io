@@ -335,7 +335,7 @@
         let matchChannel = null;
         const playerID = 'user_' + Math.random().toString(36).substring(2, 9);
         const remotePlayers = {};
-        const bots = []; // Local roaming bots for single player / offline action
+        const bots = [];
 
         const State = {
             name: '',
@@ -619,7 +619,6 @@
             });
         }
 
-        // Guaranteed deployment and bot spawner
         document.getElementById('drop-btn').onclick = function() {
             State.slots.slot1 = document.getElementById('slot1-select').value;
             State.slots.slot2 = document.getElementById('slot2-select').value;
@@ -940,7 +939,6 @@
 
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             
-            // Check Hits against local bots
             const botMeshes = bots.map(b => b.mesh.children[0]);
             const botIntersects = raycaster.intersectObjects(botMeshes);
 
@@ -962,7 +960,6 @@
                 }
             }
 
-            // Check Hits against remote players
             const targetObjects = Object.keys(remotePlayers).map(id => remotePlayers[id].mesh.children[0]);
             const intersects = raycaster.intersectObjects(targetObjects);
 
@@ -1061,7 +1058,6 @@
             const delta = (time - prevTime) / 1000;
             prevTime = time;
 
-            // Bot AI roaming updates
             bots.forEach(b => {
                 b.mesh.rotation.y += 0.02;
                 b.mesh.translateZ(b.speed);
