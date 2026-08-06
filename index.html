@@ -619,6 +619,7 @@
             });
         }
 
+        // Fixed Deployment Flow: Initializes 3D Engine FIRST, then sets slots and switches item model safely
         document.getElementById('drop-btn').onclick = function() {
             State.slots.slot1 = document.getElementById('slot1-select').value;
             State.slots.slot2 = document.getElementById('slot2-select').value;
@@ -630,17 +631,19 @@
             document.getElementById('name-slot3').innerText = State.slots.slot3.toUpperCase();
             document.getElementById('name-slot4').innerText = State.slots.slot4.toUpperCase();
 
-            switchSlot('slot1');
-            renderCrosshairHTML();
-
             menuScreen.style.cssText = "display: none !important;";
             menuScreen.className = 'screen hidden';
             hud.className = '';
             crosshair.className = '';
             document.getElementById('loadout-hud').className = '';
 
+            // Initialize 3D Engine first so camera and scene exist
             initEngine();
+            // Now safely set slot and build weapon model
+            switchSlot('slot1');
+            renderCrosshairHTML();
             spawnOfflineBots();
+
             setTimeout(() => {
                 try { document.body.requestPointerLock(); } catch(e) {}
             }, 100);
@@ -652,17 +655,22 @@
             const stats = ItemStats[itemKey];
 
             document.querySelectorAll('.slot-box').forEach(el => el.classList.remove('active'));
-            document.getElementById('box-' + slotKey).classList.add('active');
-            document.getElementById('tactical-val').innerText = itemKey.toUpperCase();
+            const boxEl = document.getElementById('box-' + slotKey);
+            if (boxEl) boxEl.classList.add('active');
+            const tacVal = document.getElementById('tactical-val');
+            if (tacVal) tacVal.innerText = itemKey.toUpperCase();
 
             if (stats.type === 'gun' || stats.type === 'secondary') {
                 State.maxAmmo = stats.ammoMax;
                 State.ammo = State.maxAmmo;
-                document.getElementById('ammo-val').innerText = `${State.ammo}/${State.maxAmmo}`;
+                const ammoVal = document.getElementById('ammo-val');
+                if (ammoVal) ammoVal.innerText = `${State.ammo}/${State.maxAmmo}`;
             } else if (stats.type === 'melee') {
-                document.getElementById('ammo-val').innerText = "MELEE";
+                const ammoVal = document.getElementById('ammo-val');
+                if (ammoVal) ammoVal.innerText = "MELEE";
             } else {
-                document.getElementById('ammo-val').innerText = "UTIL";
+                const ammoVal = document.getElementById('ammo-val');
+                if (ammoVal) ammoVal.innerText = "UTIL";
             }
 
             buildPlayerWeaponModel();
@@ -698,7 +706,6 @@
             scene.add(sunLight);
 
             buildZertMap();
-            buildPlayerWeaponModel();
 
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('keydown', onKeyDown);
@@ -766,6 +773,7 @@
         }
 
         function buildPlayerWeaponModel() {
+            if (!camera) return;
             if (weaponModelGroup) camera.remove(weaponModelGroup);
             weaponModelGroup = new THREE.Group();
 
