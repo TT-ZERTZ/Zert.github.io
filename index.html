@@ -377,7 +377,8 @@
         };
 
         let bindingAction = null;
-        let remainingBounces = 0; // Tracks stacked +1 bounces across items
+        let remainingBounces = 0; 
+        let jumpKeyDown = false; // Prevents instant auto-stacking on single press
 
         const ItemStats = {
             ar: { type: 'gun', damage: 22, fireRate: 110, ammoMax: 30, reloadTime: 1200, automatic: true, bounces: 0 },
@@ -667,7 +668,6 @@
             const itemKey = State.slots[slotKey];
             const stats = ItemStats[itemKey];
 
-            // Calculate total stacked +1 bounces from all 4 active loadout slots
             let totalBounces = 0;
             for (let s in State.slots) {
                 totalBounces += ItemStats[State.slots[s]]?.bounces || 0;
@@ -877,9 +877,11 @@
                 case Keybinds.slot3: switchSlot('slot3'); break;
                 case Keybinds.slot4: switchSlot('slot4'); break;
                 case Keybinds.jump: 
+                    if (e.repeat) return; // Prevent key-hold frame-stacking bug
                     if (canJump && !State.flightMode) { 
                         velocity.y = 11.0; 
                         canJump = false; 
+                        jumpKeyDown = true;
                     } else if (remainingBounces > 0 && !State.flightMode) {
                         const lookDir = new THREE.Vector3();
                         camera.getWorldDirection(lookDir);
@@ -901,6 +903,7 @@
                 case Keybinds.backward: moveBackward = false; break;
                 case Keybinds.left: moveLeft = false; break;
                 case Keybinds.right: moveRight = false; break;
+                case Keybinds.jump: jumpKeyDown = false; break;
             }
         }
 
@@ -1122,7 +1125,6 @@
                     camera.position.y = 2.0;
                     canJump = true;
                     
-                    // Recalculate stacked bounces from loadout on landing
                     let totalBounces = 0;
                     for (let s in State.slots) {
                         totalBounces += ItemStats[State.slots[s]]?.bounces || 0;
